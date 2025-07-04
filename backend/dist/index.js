@@ -5,14 +5,24 @@ const wss = new ws_1.WebSocketServer({ port: 8080 });
 let userCount = 0;
 let allSockets = [];
 wss.on("connection", (socket) => {
-    allSockets.push(socket);
-    userCount++;
-    console.log(`User #${userCount} connected successfully!`);
     socket.on("message", (message) => {
-        console.log("Here is the mfking message --> " + message.toString());
-        for (let i = 0; i < allSockets.length; i++) {
-            const s = allSockets[i];
-            s.send(message.toString() + " sent from the dumbass server!");
+        const parsedMessage = JSON.parse(message.toString());
+        if (parsedMessage.type === "join") {
+            allSockets.push({
+                socket,
+                room: parsedMessage.payload.roomId,
+            });
         }
+        if (parsedMessage.type == "chat") {
+            const currentRoomUser = allSockets.find((x) => x.socket == socket);
+            for (let i = 0; i < allSockets.length; i++) {
+                if (allSockets[i].room == (currentRoomUser === null || currentRoomUser === void 0 ? void 0 : currentRoomUser.room)) {
+                    allSockets[i].socket.send(parsedMessage.payload.message);
+                }
+            }
+        }
+    });
+    socket.on("disconnect", () => {
+        allSockets = allSockets.filter((x) => x.socket != socket);
     });
 });
